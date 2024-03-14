@@ -1,0 +1,18 @@
+#V2
+CREATE account SET name = 'ACME Inc', created_at = time::now()
+CREATE author:john SET name.first = 'John', name.last = 'Adams', name.full = string::join(' ', name,first, name.last), age = 29, admin = true, signup_at = time::now();
+CREATE article SET created_at = time::now(), author = author:john, title = 'Lorem ipsum dolor', text = 'Donec eleifend, nunc vitae commodo accumsan, mauris est fringilla.', account = (SELECT VALUE id FROM account WHERE name = 'ACME Inc' LIMIT 1)[0]
+SELECT * FROM article;
+SELECT * FROM article, account;
+SELECT * FROM article WHERE author.age < 30 FETCH author, account;
+UPDATE author:john SET name.first = 'David', name.full = string::join(' ', name.first, name.last);
+UPDATE author:john SET admin = false WHERE name.last = 'Adams'
+UPDATE author:john SET admin = false WHERE name.last = 'Adams1'
+UPDATE author:john SET admin = false WHERE name.last = 'Adams'
+SELECT * FROM author:john
+DELETE article WHERE author.name.first = 'David'
+SELECT * FROM article
+REMOVE TABLE article
+REMOVE TABLE author
+SELECT * FROM article
+SELECT * FROM a124
