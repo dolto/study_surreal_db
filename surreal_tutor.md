@@ -13,6 +13,18 @@
 - ```--user root --pass root``` 데이터베이스에 액세스하기 위한 사용자 이름과 비밀번호 지정 (예시는 둘 다 root임)
 - ```memory``` 데이터 베이스가 메모리에서 실행된다는 의미 즉, 서버가 꺼지면 데이터도 잃게됨!
 
+## Docker에서 실행하기
+- surrealDB는 Docker에 image로 등록되어 있다.
+- 다음 코드로 image를 받고 컨테이너로 실행할 수 있다.
+```sudo docker run --rm --pull always -p 8000:8000 surrealdb/surrealdb:latest start```
+- 물론 -v태그로 파일에 db를 유지할 수도 있다. (권한 거부현상이 잦기 때문에 경로를 잘 확인해주자)
+```sudo docker run --rm --pull always -p 8000:8000 -v /경로 surrealdb/surrealdb:latest start file:/경로/db이름.db```
+- 당연한 이야기지만 start옆에 이것저것 속성부여도 가능하다 (아래는 --log와 --user, --pass설정)
+```sudo docker run --rm --pull always -p 80:8000 -v /경로 surrealdb/surrealdb:latest start --log trace --user root --pass root file:/경로/db이름.db```
+- 아래는 도움말 출력
+```docker run --rm --pull always surrealdb/surrealdb:latest help```
+
+
 # SurrealDB에서 쿼리
 - 서버를 실행하면 나오는 메세지를 통해 특정 엔드포인트에 따른 SurrealDB를 실행
 - ```surreal sql --endpoint http://localhost:8000 --username root --password root --namespace test --database test```
