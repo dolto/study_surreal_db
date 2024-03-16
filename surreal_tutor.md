@@ -21,6 +21,9 @@
 ```sudo docker run --rm --pull always -p 8000:8000 -v /경로 surrealdb/surrealdb:latest start file:/경로/db이름.db```
 - 당연한 이야기지만 start옆에 이것저것 속성부여도 가능하다 (아래는 --log와 --user, --pass설정)
 ```sudo docker run --rm --pull always -p 80:8000 -v /경로 surrealdb/surrealdb:latest start --log trace --user root --pass root file:/경로/db이름.db```
+- 권한 거부현상이 발생하면 -u 를 이용해서 사용자를 root로 변경해보자
+```sudo docker run --rm -u root --pull always -p 80:8000 -v /경로 surrealdb/surrealdb:latest start --log trace --user root --pass root file:/경로/db이름.db```
+- (docker명령어는 따로 검색하면 알겠지만 --rm은 컨테이너가 stop될 때 컨테이너를 제거해주는 명령어이다... 원치 않으면 지워도 됨)
 - 아래는 도움말 출력
 ```docker run --rm --pull always surrealdb/surrealdb:latest help```
 
