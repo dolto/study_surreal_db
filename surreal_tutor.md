@@ -136,3 +136,138 @@
 
 ##### MongoDB나 다른 DB의 문법과 차이점을 직접 비교하는 [링크](https://surrealdb.com/docs/surrealdb/introduction/mongo)
 ##### SQL과 SurrealQL의 차이를 직접 비교하는 [링크](https://surrealdb.com/docs/surrealdb/introduction/sql)
+
+
+# Crate
+## 데이터
+- 우선 활용할 데이터들은 struct로 구성되어있어야 하며, Serialize, Deserialize 트레잇을 가지고 있어야 한다.
+- 여기서 주의할 점은 struct는 튜플구조체가 아니어야 한다.
+```
+#[derive(Serialize, Deserialize)]
+struct TableName{
+	feild_name: String
+}
+```
+
+## 서버 연결
+- 서버 연결은 Websocket이나 다른 (HTTP등)으로 할 수 있다.
+```rust
+	let db = Surreal:new::<Any>("ws://localhost:80").await?;
+	// 혹은
+	let db = Surreal::new::<Ws>("localhost:80").await?;
+	let db = Surreal::new::<Http>("localhost:80").await?;
+```
+- 또한 once_cell crate를 사용해서 static으로 지정해서 최초 한번만 수행할 수도 있다.
+```rust
+	use once_cell::sync::Lazy;
+
+	static DB: Lazy<Surreal<Any>> = Lazy::new(Surreal::init);
+	DB.connect("ws://localhost:80").await?;
+	// 혹은
+	DB.connect::<Ws>("localhost:80").await?;
+	DB.connect::<Http>("localhost:80").await?;
+```
+- username과 password가 있는경우는 이어서 다음과 같이 쓰면 된다.
+```rust
+	db.signin(Root{
+		username: "root",
+		password: "root",
+	}).await?;
+```
+- 연결 설정이 완료되면, namespace와 database이름으로 접속이 가능해진다.
+```rust
+	db.use_ns("namespace").use_db("database").await?;
+```
+
+- 또한 특정 범위에 대한 유저를 생성하고 싶다면 다음과 같이 하면 된다.
+- (정확한건 더 알아봐야 할 것 같다.)
+```rust
+	db.signup(Scope {
+		namespace: "namespace",
+		database: "database",
+		scope: "user_scope",
+		params: Ptype{
+			// email 과 같은 추가적인 정보가 필요한 경우 구조체를 만들어서 넣으면 된다.
+			// Ptype은 그 만들 구조체의 임시적인 이름이다(아무 이름이던 상관 없음)
+			// 단 Debug와 Serialize 트레잇이 있어야 하는 것 같다.
+		}
+	}).await?;
+```
+## CREATE
+- surrealQL 이 아니라 마치 JAP를 활용하는 것과 비슷하게, 함수로 수행할 수 있다.
+- 리턴값은 surrealQL을 작성해서 얻는 값과 대응하는 값이 들어온다. (Vec<type>과 Option<type>)
+```rust
+	let _: Vec<type> = db.create("table_name").content(type{field_name: value}).await?;
+	// return [type {field_name: value}]
+	// 아마 랜덤 uuid가 id필드에 들어갔을 것이다.
+
+	let _: Option<type> = db.create(("table_name","cutom_id")).content(type{field_name: value}).await?;
+	// return Result(type{field_name: value})
+	// "custom_id"가 id필드에 들어갔을 것이다.
+```
+
+## SELECT
+- SELECT는 다음과 같이 활용하면 된다.
+- id에 대한 범위 지정을 제외하면 where문은 딱히 없는 것 같다.(Where를 표현하는 Enum이 있으나, 아직 활용하진 못하나봄)
+```rust
+	let _: Vec<type> = db.select("table_name").await?; // SELECT * FROM table_name
+
+	// 특정 id를 찾으려면 다음과 같이 하면됨
+
+	let _: Option<type> = db.select(("table_name", "custom_id")).await?; // SELECT * FROM table_name:custom_id;
+
+	// id의 범위를 찾으려면 다음과 같이 하면 된다. (아마 오름차순으로 정렬되어 있을 것이다.)
+	let _: Vec<type> = db.select("table_name").range("jane".."john").await?;
+```
+
+- 또한 어떤 레코드 집단에 update가 수행되는지 관찰하려면, 다음과 같이 하면 된다.
+```rust
+	let mut stream = db.select("table_name").live().await?;
+	while let Some(notification) = stream.next().await{
+		// 알림을 활용하면 된다.
+	}
+```
+
+## UPDATE
+- table전체 레코드 혹은 특정 레코드만 업데이트 할 수 있다.
+- field_name은 레코드의 필드의 속성들을 /단위로 한다... 즉 배열이라고 친다면, /field_name/0 이면 0번째 인덱스의 처리를 하는것이다.
+```rust
+	let _: Vec<type> = db.update("table_name")
+		.patch(PatchOp::replace("/field_name", new_data)).await?;
+	let _: Option<type> = db.update(("table_name", "custom_id"))
+		.content(type{
+			// 변경점
+		}).await?;
+```
+
+- PatchOp도 여러가지가 있다.
+1. ```PatchOp::replace("/field_name", new_data)```
+2. ```PatchOp::add("/field_name", add_data)```
+3. ```PatchOp::remove("/field_name")```
+
+## DELETE
+- 테이블 전체 레코드를 제거하거나, 특정 레코드를 제거
+```rust
+	let _: Vec<type> = db.delete("table_name").await?;
+	let _: Option<type> = db.delete(("table_name", "custom_id")).await?;
+```
+
+## SurrealQL
+- 쿼리문을 직접 넣을 수도 있다.
+```
+	let mut result = db
+		.query("CREATE table_name SET value = $data")
+		.query("SELECT * FROM type::table($table)")
+		.bind(("data","some_data"))
+		.bind(("table","table_name"))
+		.await?;
+
+	// 결과를 가져오는건 take(index)를 하면 된다.
+	let created_result: Vec<table_name> = result.take(0)?;
+	let selected_result: Vec<table_name> = result.take(1)?;
+
+	// 물론 결과 예상 (Vec<table_name>)타입이 다르다면, 에러를 내보낸다.
+	if let Err(err) = result.take::<Vec<rong_type>>(0) {
+		println! ("잘못된 타입 {e:#?}");
+	}
+```
