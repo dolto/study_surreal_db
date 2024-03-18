@@ -164,8 +164,7 @@ struct TableName{
 	static DB: Lazy<Surreal<Any>> = Lazy::new(Surreal::init);
 	DB.connect("ws://localhost:80").await?;
 	// 혹은
-	DB.connect::<Ws>("localhost:80").await?;
-	DB.connect::<Http>("localhost:80").await?;
+	DB.connect("http://localhost:80").await?;
 ```
 - username과 password가 있는경우는 이어서 다음과 같이 쓰면 된다.
 ```rust
@@ -254,7 +253,7 @@ struct TableName{
 
 ## SurrealQL
 - 쿼리문을 직접 넣을 수도 있다.
-```
+```rust
 	let mut result = db
 		.query("CREATE table_name SET value = $data")
 		.query("SELECT * FROM type::table($table)")
@@ -271,3 +270,9 @@ struct TableName{
 		println! ("잘못된 타입 {e:#?}");
 	}
 ```
+
+## 사용시 주의사항
+- 구조체는 튜플구조체가 아니어야하며, 반드시 feild구조체여야 한다.
+- Db에서 주는 결과값은 언제나 구조체와 대응되어야 한다. (필드명이 db의 테이블과 같은지 확인해야함)
+- id를 받고 싶다면 구조체 안에 id라는 필드명의 Thing타입(구조체)를 가져야한다.
+- id의 형식은 자동으로 서버에서 받게된다. id의 타입이 Number인데, String형식으로 받으려고 하면 문제가 발생한다. (쿼리에서 id를 String 하고싶다면 문자열로 보이게끔 ID1010 이런식으로 이름을 지어줘야한다.) 
